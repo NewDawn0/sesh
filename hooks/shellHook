@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+sesh () {
+    local seshName="sesh-default"
+    seshCore "$@" | while IFS= read -r line; do
+        if [[ "$line" == "[DIR]:  "* ]]; then
+            local dir="${line#"[DIR]:  "}"
+            cd "$dir"
+            seshName="sesh-$(basename "$dir")"
+        else
+            echo "$line"
+        fi
+    done
+    tmux attach-session -t "$seshName" || echo "Creating new session $seshName ..." && tmux new-session -s "$seshName"
+}
