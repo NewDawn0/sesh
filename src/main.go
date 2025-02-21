@@ -22,6 +22,7 @@ func main() {
 		item, err := db.find(f)
 		if err != nil {
 			fmt.Printf("Err: %v\n", err)
+			fmt.Println("[EXIT]")
 		}
 		fmt.Println("[DIR]: ", item)
 	}
@@ -36,6 +37,7 @@ func main() {
 			} else {
 				fmt.Println("Err: Invalid amount of args to call add")
 			}
+			fmt.Println("[EXIT]")
 		case "rm":
 			if len(os.Args) == 3 {
 				err := db.rm(f, os.Args[2])
@@ -45,8 +47,10 @@ func main() {
 			} else {
 				fmt.Println("Err: Invalid amount of args to call add")
 			}
+			fmt.Println("[EXIT]")
 		default:
-			fmt.Printf("hello")
+			fmt.Println("Err: Invalid subcommand")
+			fmt.Println("[EXIT]")
 		}
 	}
 }
@@ -180,7 +184,11 @@ func (db *DB) add(f *os.File, newPath string) error {
 		return err
 	}
 	_, err = f.Write(buf.Bytes())
-	return err
+	if err != nil {
+		return err
+	}
+	fmt.Printf("OK: Added %s\n", absPath)
+	return nil
 }
 
 func (db *DB) rm(f *os.File, keyToRemove string) error {
@@ -188,16 +196,25 @@ func (db *DB) rm(f *os.File, keyToRemove string) error {
 	if err != nil {
 		return err
 	}
-	if _, exists := existingEntries[keyToRemove]; !exists {
-		fmt.Println("Key not found:", keyToRemove)
+	absPath, _ := filepath.Abs(keyToRemove)
+	if _, exists := existingEntries[absPath]; !exists {
+		fmt.Println("Key not found:", absPath)
 		return nil
 	}
-	delete(existingEntries, keyToRemove)
+	delete(existingEntries, absPath)
 	tempFile, err := os.CreateTemp("", "db_temp")
 	if err != nil {
 		return err
 	}
 	defer os.Remove(tempFile.Name())
+	dbPath := db.file
+	if dbPath[0] == '~' {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+		dbPath = filepath.Join(homeDir, dbPath[1:])
+	}
 	var buf bytes.Buffer
 	numEntries := int32(len(existingEntries))
 	if err := binary.Write(&buf, binary.NativeEndian, numEntries); err != nil {
@@ -226,7 +243,12 @@ func (db *DB) rm(f *os.File, keyToRemove string) error {
 	}
 	f.Close()
 	tempFile.Close()
-	return os.Rename(tempFile.Name(), db.file)
+	err = os.Rename(tempFile.Name(), dbPath)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("OK: Removed %s\n", absPath)
+	return nil
 }
 
 func (db *DB) find(f *os.File) (string, error) {
@@ -248,6 +270,7 @@ func (db *DB) find(f *os.File) (string, error) {
 	}
 	if len(idxs) == 0 {
 		fmt.Println("Noting selected")
+		fmt.Println("[EXIT]")
 		os.Exit(0)
 	}
 	return items[idxs[0]], nil
