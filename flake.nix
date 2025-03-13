@@ -1,30 +1,32 @@
 {
-  description = "A session program";
+  description = "Minimal Vim project switcher";
 
   inputs.utils.url = "github:NewDawn0/nixUtils";
 
-  outputs = { self, utils }: {
+  outputs = { self, utils, ... }: {
     overlays.default = final: prev: {
-      pkgs = prev // { sesh = self.packages.${prev.system}.default; };
+      sesh = self.packages.${prev.system}.default;
     };
     packages = utils.lib.eachSystem { } (pkgs:
       let
-        version = "0.0.1";
-        meta = {
-          description = "A session program";
-          homepage = "https://github.com/NewDawn0/sesh";
-          license = pkgs.lib.licenses.mit;
-          maintainers = with pkgs.lib.maintainers; [ NewDawn0 ];
+        common = {
+          version = "1.0.0";
+          meta = {
+            description = "Minimal Vim project switcher";
+            homepage = "https://github.com/NewDawn0/sesh";
+            license = pkgs.lib.licenses.mit;
+            maintainers = with pkgs.lib.maintainers; [ NewDawn0 ];
+          };
         };
         seshCore = pkgs.buildGoModule {
-          inherit meta version;
+          inherit (common) meta version;
           name = "seshCore";
           src = ./src;
           vendorHash = "sha256-i+4jsy3utwO8DlngdOmUEpX3Azi1ydHsDhqnwbBhk4c=";
         };
       in {
         default = pkgs.stdenvNoCC.mkDerivation {
-          inherit meta version;
+          inherit (common) meta version;
           name = "sesh";
           src = ./.;
           dontConfigure = true;
@@ -38,6 +40,7 @@
             source $src/hooks/shellHook
           '';
         };
+
       });
   };
 }
