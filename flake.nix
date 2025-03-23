@@ -20,27 +20,28 @@
         };
         seshCore = pkgs.buildGoModule {
           inherit (common) meta version;
-          name = "seshCore";
+          name = "sesh-core";
           src = ./src;
           vendorHash = "sha256-i+4jsy3utwO8DlngdOmUEpX3Azi1ydHsDhqnwbBhk4c=";
         };
-      in {
-        default = pkgs.stdenvNoCC.mkDerivation {
+        seshSource = pkgs.stdenvNoCC.mkDerivation {
+          name = "sesh-source";
           inherit (common) meta version;
-          name = "sesh";
           src = ./.;
           dontConfigure = true;
           dontBuild = true;
-          propagatedBuildInputs = [ seshCore pkgs.fzf pkgs.tmux ];
-          installPhase = ''
-            mkdir -p $out/bin $out/lib
-            cp $src/hooks/shellHook $out/lib
-          '';
+          installPhase =
+            "install -D $src/hooks/SOURCE_ME.sh $out/lib/SOURCE_ME";
+        };
+      in {
+        default = pkgs.symlinkJoin {
+          name = "sesh";
+          inherit (common) meta version;
+          paths = with pkgs; [ seshSource seshCore fzf tmux ];
           shellHook = ''
-            source $src/hooks/shellHook
+            source $out/lib/SOURCE_ME.sh
           '';
         };
-
       });
   };
 }
